@@ -18,6 +18,7 @@ import base64
 import json
 import random
 import argparse
+import zlib
 from datetime import datetime
 import configparser
 from http.cookies import SimpleCookie
@@ -1235,8 +1236,13 @@ def validateToken(jwt):
         cprintc(paylB64, "cyan")
         cprintc(sig, "cyan")
         exit(1)
+
     try:
-        payl = base64.urlsafe_b64decode(paylB64 + "=" * (-len(paylB64) % 4))
+        if args.payloaduncompress:
+            payl_decoded = base64.urlsafe_b64decode(paylB64 + "=" * (-len(paylB64) % 4))
+            payl = zlib.decompress(payl_decoded, wbits=-15)
+        else: 
+            payl = base64.urlsafe_b64decode(paylB64 + "=" * (-len(paylB64) % 4))
     except:
         cprintc("[-] Invalid token:\nCould not base64-decode PAYLOAD - incorrect formatting/invalid characters", "red")
         cprintc("----------------", "white")
@@ -1244,6 +1250,7 @@ def validateToken(jwt):
         cprintc(paylB64, "red")
         cprintc(sig, "cyan")
         exit(1)
+
     try:
         headDict = json.loads(head, object_pairs_hook=OrderedDict)
     except:
@@ -1251,6 +1258,7 @@ def validateToken(jwt):
 
         cprintc(head.decode('UTF-8'), "red")
         exit(1)
+
     if payl.decode() == "":
         cprintc("Payload is blank", "white")
         paylDict = {}
@@ -1858,6 +1866,8 @@ if __name__ == '__main__':
                         help="Value (or file containing values) to inject into tampered header claim")
     parser.add_argument("-pv", "--payloadvalue", action="append",
                         help="Value (or file containing values) to inject into tampered payload claim")
+    parser.add_argument("-pu", "--payloaduncompress", action="store_true",
+                        help="Uncompress payload before decoding"),                         
     parser.add_argument("-C", "--crack", action="store_true",
                         help="crack key for an HMAC-SHA token\n(specify -d/-p/-kf)")
     parser.add_argument("-d", "--dict", action="store",
@@ -1873,7 +1883,7 @@ if __name__ == '__main__':
     parser.add_argument("-jw", "--jwksfile", action="store",
                         help="JSON Web Key Store for Asymmetric crypto")
     parser.add_argument("-Q", "--query", action="store",
-                        help="Query a token ID against the logfile to see the details of that request\ne.g. -Q jwttool_46820e62fe25c10a3f5498e426a9f03a")
+                        help="Query a token ID against the logfile to see the details of that request\ne.g. -Q jwttool_46820e62fe25c10a3f5498e426a9f03a")                    
     parser.add_argument("-v", "--verbose", action="store_true",
                         help="When parsing and printing, produce (slightly more) verbose output.")
     args = parser.parse_args()
