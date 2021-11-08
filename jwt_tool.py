@@ -1238,7 +1238,7 @@ def validateToken(jwt):
         exit(1)
 
     try:
-        if args.payloaduncompress:
+        if args.shc:
             payl_decoded = base64.urlsafe_b64decode(paylB64 + "=" * (-len(paylB64) % 4))
             payl = zlib.decompress(payl_decoded, wbits=-15)
         else: 
@@ -1830,6 +1830,8 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser(epilog="If you don't have a token, try this one:\neyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJsb2dpbiI6InRpY2FycGkifQ.bsSwqj2c2uI9n7-ajmi3ixVGhPUiY7jO9SUn9dm15Po", formatter_class=argparse.RawTextHelpFormatter)
     parser.add_argument("jwt", nargs='?', type=str,
                         help="the JWT to tinker with (no need to specify if in header/cookies)")
+    parser.add_argument("-pu", "--shc", action="store_true",
+                        help="smart health card support"),                          
     parser.add_argument("-b", "--bare", action="store_true",
                         help="return TOKENS ONLY")
     parser.add_argument("-t", "--targeturl", action="store",
@@ -1865,9 +1867,7 @@ if __name__ == '__main__':
     parser.add_argument("-hv", "--headervalue", action="append",
                         help="Value (or file containing values) to inject into tampered header claim")
     parser.add_argument("-pv", "--payloadvalue", action="append",
-                        help="Value (or file containing values) to inject into tampered payload claim")
-    parser.add_argument("-pu", "--payloaduncompress", action="store_true",
-                        help="Uncompress payload before decoding"),                         
+                        help="Value (or file containing values) to inject into tampered payload claim")                       
     parser.add_argument("-C", "--crack", action="store_true",
                         help="crack key for an HMAC-SHA token\n(specify -d/-p/-kf)")
     parser.add_argument("-d", "--dict", action="store",
@@ -1997,6 +1997,18 @@ if __name__ == '__main__':
             exit(1)
         else:
             config['argvals']['sigType'] = args.sign
+
+
+    if args.shc:
+        # ex: shc:/123456....
+        if jwt.startswith('shc:/'):
+            #shc_data = jwt
+            parts = re.findall("..", jwt[5:])
+
+            jwt = ""
+            for p in parts:
+                jwt += chr(int(p)+ 45)
+
     headDict, paylDict, sig, contents = validateToken(jwt)
     paylB64 = base64.urlsafe_b64encode(json.dumps(paylDict,separators=(",",":")).encode()).decode('UTF-8').strip("=")
     config['argvals']['overridesub'] = "false"
